@@ -1,0 +1,27 @@
+svg {
+    background: black;
+    border-radius: 10px;
+}
+g circle {
+    fill: rgba(70, 130, 180, 0.5);
+}
+g:hover circle {
+    fill: rgba(70, 130, 180, 1);
+    cursor: pointer;
+}
+.axis path {
+    fill: rgba(255,255,255,0.4);
+}
+.axis line {
+    shape-rendering: crispEdges;
+    stroke: #000;
+}
+.axis .minor line {
+    stroke: #000;
+}
+.tick line {
+    stroke: #fff;
+}
+.tick text {
+    fill: #fff;
+}

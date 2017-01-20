@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js'></script>
+        <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js'></script>
+        <script src="https://cdn.jsdelivr.net/vue/1.0.16/vue.js"></script>
+        <link href="https://fonts.googleapis.com/css?family=Overpass+Mono|PT+Sans|VT323" rel="stylesheet">
+        <link href='styles.css' rel='stylesheet'/>
+        <link href='svg.css' rel='stylesheet'/>
+        <style>
+        </style>
+    </head>
+    <body>
+        <div id='vue-instance'>
+            <div class="container">
+                <h1 v-bind:is='titleComponent' v-on:switch='changeComponent' v-bind:text='title'></h1>
+                <div id='d3'><svg></svg></div>
+                <textarea v-model='eventToAdd.description'></textarea>
+                <input type='date' v-model='eventToAdd.date' />
+                <button v-on:click='addEventFromForm'>Add Event</button>
+                <div class='timeline-entry' v-for='item in timeline'>
+                    <h3>
+                        {{item.description}}
+                    </h3>
+                    <small>
+                        {{item.dd}}/{{item.mm}}/{{item.yyyy}}
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+            Vue.component('title-element', {
+                template: '<h1 v-on:click="changeText"> {{ text }} </h1>',
+                props: ['text'],
+                methods: {
+                    changeText: function() {
+                        this.$emit('switch', 'edit-title-element');
+                    }
+                }
+            });
+
+            Vue.component('edit-title-element', {
+                template: '<input type="text" v-on:keyup="changeText" v-model="text">',
+                props: ['text'],
+                methods: {
+                    changeText: function(e) {
+                        if (e.keyCode == 13) {
+                            this.$emit('switch', 'title-element', this.text);
+                        }
+                    }
+                }
+            });
+            var vm = new Vue({
+                el: '#vue-instance',
+                data: {
+                    title: 'Timeline of Events',
+                    titleComponent: 'title-element',
+                    width: 960,
+                    height: 160,
+                    eventToAdd: {
+                        description: '',
+                        date: '01/01/2017'
+                    },
+                    timeline: [
+                    ],
+                    author: 'Ian Derbyshire',
+                    github_user: 'Fliteska',
+
+                    https_clone: 'git clone https://github.com/fliteska/vuejs.git $directory',
+                    ssh_clone: 'git clone git@github.com:fliteska/vuejs.git $directory'
+                },
+                methods: {
+                    changeComponent: function(component, title) {
+                        this.titleComponent = component;
+                        if (title) {
+                            this.title = title;
+                        }
+                    },
+                    addEventFromForm: function() {
+                        var date = new Date(this.eventToAdd.date);
+                        this.addEvent(date, this.eventToAdd.description, true);
+                    },
+                    addEvent: function(date, description, forceRender) {
+                        var dd = date.getDate();
+                        if (dd < 10) { dd = '0' + dd; }
+                        var mm = date.getMonth() + 1;
+                        if (mm < 10) { mm = '0' + mm; }
+                        var yyyy = date.getFullYear();
+
+                        var start = new Date(yyyy, 0, 0);
+                        var diff = date - start;
+                        var oneDay = 1000 * 60 * 60 * 24;
+                        var dayInYear = Math.floor(diff / oneDay);
+                        this.timeline.push({
+                            description: description,
+                            yyyy,
+                            dd,
+                            mm,
+                            dayInYear
+                        });
+
+                        this.timeline.sort((a, b) => (a.yyyy + (a.dayInYear / 366) > (b.yyyy + (b.dayInYear / 366)) ? -1 : 1))
+
+                        if (forceRender) {
+                            this.clearEventForm();
+                            this.renderD3();
+                        }
+                    },
+                    clearEventForm: function() {
+                        this.eventToAdd.description = '';
+                    },
+                    renderD3: function() {
+
+                        var width = this.width;
+                        var height = this.height;
+                        var dataset = this.timeline;
+                        var svg = d3.select("svg")
+                            .remove();
+                        svg = d3.select('#d3')
+                            .append('svg')
+                            .attr('width', width)
+                            .attr('height', height);
+                        var max = d3.max(dataset, d => d.yyyy + (d.dayInYear / 366) + 1);
+                        var min = d3.min(dataset, d => d.yyyy + (d.dayInYear / 366) - 1);
+                        var scale = d3.scale.linear()  
+                            .domain([min, max])  
+                            .range([0, width]);
+
+                        var xAxis = d3.svg.axis().scale(scale).orient("bottom");
+
+                        var timelineNodes = svg.selectAll('g')
+                            .data(dataset)
+                            .enter()
+                            .append('g');
+
+                        svg.append("g")
+                            .attr("class", "x axis")
+                            .attr("transform", "translate(0," + (height - 100) + ")")
+                            .call(xAxis)
+                                .selectAll("text")
+                                .style("text-anchor", "middle")
+                                .attr("transform", "translate(15, 30),rotate(90)");
+
+                        timelineNodes.append('circle')
+                            .attr('cy', () => height / 4)
+                            .attr('cx', d => scale(d.yyyy + (d.dayInYear / 366)))
+                            .attr('r', 10)
+                            .on('click', (d) => {
+                                alert(d.description);
+                            });
+                    } // end of renderD3()
+                }
+            });
+            vm.addEvent(new Date(2004, 2, 4), 'Facebook launched');
+            vm.addEvent(new Date(2003, 8, 1), 'MySpace launched');
+            vm.addEvent(new Date(2006, 3, 21), 'Twitter launched');
+            vm.addEvent(new Date(2013, 1, 24), 'Vine launched');
+            vm.addEvent(new Date(2005, 2, 14), 'YouTube launched');
+            vm.addEvent(new Date(2010, 10, 6), 'Instagram launched');
+            vm.addEvent(new Date(2009, 1, 2), 'WhatsApp launched');
+            vm.renderD3();
+        </script>
+    </body>
+</html>
